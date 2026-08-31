@@ -28,6 +28,42 @@ def _dump(value: object) -> str:
     return json.dumps(to_dict(value), ensure_ascii=True, sort_keys=True, separators=(",", ":"))
 
 
+def _controller_facts(
+    visit_memory: object,
+    trajectory: object,
+    cross_subject_context: Sequence[object],
+) -> dict[str, object]:
+    memory = to_dict(visit_memory)
+    trajectory_state = to_dict(trajectory)
+    comparisons = {}
+    if isinstance(memory, Mapping):
+        for modality, value in memory.items():
+            if not isinstance(value, Mapping):
+                continue
+            comparisons[str(modality)] = {
+                key: value.get(key)
+                for key in (
+                    "anchor_available",
+                    "anchor_visit_id",
+                    "direction",
+                    "magnitude",
+                    "comparison_quality",
+                )
+            }
+    active_ids = trajectory_state.get("active_event_ids", []) if isinstance(trajectory_state, Mapping) else []
+    return {
+        "current_same_modality_comparisons": comparisons,
+        "available_same_modality_anchors": sorted(
+            modality for modality, value in comparisons.items() if value.get("anchor_available") is True
+        ),
+        "missing_same_modality_anchors": sorted(
+            modality for modality, value in comparisons.items() if value.get("anchor_available") is not True
+        ),
+        "active_trajectory_event_count": len(active_ids) if isinstance(active_ids, list) else 0,
+        "cross_subject_neighbor_count": len(cross_subject_context),
+    }
+
+
 class PromptBuilder:
     def __init__(self, adapter: AdapterSpec):
         self.adapter = adapter
@@ -217,16 +253,23 @@ class PromptBuilder:
             }
             for index, item in enumerate(cross_subject_context or [], start=1)
         ]
+        controller_facts = _controller_facts(visit_memory, trajectory, safe_cross_subject_context)
         user = (
             "Reconcile the structured evidence without averaging modalities into one score. Preserve whether sources "
             "are convergent, complementary, conflicting, or unavailable. Subject-specific evidence outranks "
-            "cross-subject analogy. Do not predict the label yet.\n"
+            "cross-subject analogy. The visit memory is authoritative for current anchor availability: when an entry "
+            "has anchor_available=true, preserve its anchor, direction, magnitude, and comparison quality. Earlier "
+            "trajectory events may describe anchors that were unavailable at an earlier visit; do not carry that "
+            "earlier limitation into the current visit or list it as missing current evidence. A historical baseline "
+            "without an earlier anchor is still a valid current anchor. Do not predict the label yet.\n"
             f"Current evidence: {_dump(current_evidence)}\n"
             f"Reference calibrations: {_dump(reference_calibrations)}\n"
-            f"Visit memory: {_dump(visit_memory)}\n"
             f"Active trajectory memory: {_dump(trajectory)}\n"
             f"Optional cross-subject analogies: {_dump(safe_cross_subject_context)}\n"
+            f"Visit memory for the current decision point: {_dump(visit_memory)}\n"
             f"Task reconciliation rules:\n{rules}\n"
+            f"Controller-authoritative current-state facts: {_dump(controller_facts)}\n"
+            "The reconciled output must not contradict these current-state facts.\n"
             f"Output schema: {_dump(schema)}\n{JSON_RULES}"
         )
         return PromptRequest("reconcile", self.role + "Construct the reconciled evidence state.", user, (), schema)
@@ -265,6 +308,8 @@ class PromptBuilder:
             "Apply the decision-context rubric in the listed order.\n"
             "Fill every task_support key with a concise evidence-based assessment; the schema values describe "
             "what each field must assess.\n"
+            "Treat the visit memory and evidence snapshot as authoritative for anchor availability. A stable or "
+            "uncertain comparison with anchor_available=true is still available longitudinal evidence.\n"
             "Use a qualitative differential, not invented probability vectors. The second-best label must differ "
             "from the leading label.\n"
             f"Output schema: {_dump(schema)}\n{JSON_RULES}"
@@ -306,7 +351,10 @@ class PromptBuilder:
             f"Decision context: {_dump(decision_context)}\n"
             f"Contradictions: {_dump(list(contradictions))}\n"
             f"Allowed labels: {_dump(labels)}\n"
-            "Fill every task_support key and keep each value grounded in the supplied evidence state.\n"
+            "Remove every contradicted statement from the summary, evidence lists, uncertainties, and task_support. "
+            "Fill every task_support key and keep each value grounded in the supplied evidence state. Treat the visit "
+            "memory and evidence snapshot as authoritative for anchor availability; when an anchor is available, "
+            "describe its direction, magnitude, and comparison quality instead of calling it missing.\n"
             f"Output schema: {_dump(schema)}\n{JSON_RULES}"
         )
         return PromptRequest("repair_belief", self.role + "Run one bounded belief repair.", user, (), schema)
@@ -331,12 +379,14 @@ class PromptBuilder:
         }
         user = (
             "Audit whether the final belief is grounded, whether expected local comparisons were completed, and "
-            "whether unresolved conflicts are represented. Do not change the prediction in this stage.\n"
+            "whether unresolved conflicts are represented. The visit memory is authoritative for whether each "
+            "same-modality anchor and comparison is available. Report only contradictions that remain after repair; "
+            "do not repeat resolved contradictions. Do not change the prediction in this stage.\n"
             f"Current evidence: {_dump(current_evidence)}\n"
             f"Visit memory: {_dump(visit_memory)}\n"
             f"Reconciled evidence: {_dump(reconciled)}\n"
             f"Final belief: {_dump(belief)}\n"
-            f"Controller contradictions before repair: {_dump(list(contradictions))}\n"
+            f"Controller contradictions remaining after repair: {_dump(list(contradictions))}\n"
             f"Repair performed: {str(repair_performed).lower()}\n"
             f"Output schema: {_dump(schema)}\n{JSON_RULES}"
         )

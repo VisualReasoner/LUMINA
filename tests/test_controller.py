@@ -9,8 +9,16 @@ from lumina.adapters import load_adapter
 from lumina.agent import ControllerConfig, EvidenceController, LUMINARuntime
 from lumina.models import ReplayModelClient
 from lumina.memory.cross_subject import CrossSubjectBank, CrossSubjectEntry
-from lumina.schemas.states import ImageRef, VisitInput
-from lumina.schemas.states import TrajectoryEvent, TrajectoryState
+from lumina.prompts.builders import _controller_facts
+from lumina.schemas.states import (
+    BeliefState,
+    ImageRef,
+    LocalComparison,
+    ReconciledEvidence,
+    TrajectoryEvent,
+    TrajectoryState,
+    VisitInput,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -148,6 +156,65 @@ def test_invalid_stage_output_gets_one_constrained_retry(tmp_path: Path) -> None
     ).run_subject([_visit("s1", "v1", "2020-01-01", image_path)])
     assert result.prediction == "CU_nonAD"
     assert result.call_count == 6
+
+
+def test_available_anchor_conflict_triggers_belief_repair() -> None:
+    adapter = load_adapter(ROOT / "configs" / "adapters" / "adni_ad_continuum.yaml")
+    controller = EvidenceController(adapter=adapter, model=ReplayModelClient({}))
+    belief = BeliefState(
+        leading_label="CU_nonAD",
+        second_best_label="Preclinical_AD",
+        supporting_evidence=["current MRI evidence"],
+        longitudinal_evidence=["no prior MRI anchor for comparison"],
+        task_support={key: "no prior MRI anchor available" for key in adapter.task.belief_dimensions},
+        summary="No prior anchor is available.",
+    )
+    memory = {
+        "MRI": LocalComparison(
+            modality="MRI",
+            anchor_available=True,
+            anchor_visit_id="v1",
+            direction="stable",
+            magnitude="none",
+        )
+    }
+
+    issues = controller._contradictions({}, belief, ReconciledEvidence(), memory)
+
+    assert "belief contradicts available same-modality anchor for MRI" in issues
+
+
+def test_controller_facts_keep_current_state_separate_from_history() -> None:
+    facts = _controller_facts(
+        {
+            "MRI": LocalComparison(
+                modality="MRI",
+                anchor_available=True,
+                anchor_visit_id="v1",
+                direction="stable",
+                magnitude="none",
+                comparison_quality="adequate",
+            )
+        },
+        TrajectoryState(active_event_ids=["s1:v1"]),
+        [object()],
+    )
+
+    assert facts == {
+        "current_same_modality_comparisons": {
+            "MRI": {
+                "anchor_available": True,
+                "anchor_visit_id": "v1",
+                "direction": "stable",
+                "magnitude": "none",
+                "comparison_quality": "adequate",
+            }
+        },
+        "available_same_modality_anchors": ["MRI"],
+        "missing_same_modality_anchors": [],
+        "active_trajectory_event_count": 1,
+        "cross_subject_neighbor_count": 1,
+    }
 
 
 def test_runtime_rejects_duplicate_visit_ids(tmp_path: Path) -> None:

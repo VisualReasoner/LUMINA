@@ -88,8 +88,13 @@ python scripts/run_benchmark.py \
   --adapter-yaml configs/adapters/adni_ad_continuum.yaml \
   --backend transformers \
   --model /path/to/Qwen3-VL-8B-Thinking \
+  --no-thinking \
   --output-dir /path/to/results
 ```
+
+`--no-thinking` makes dedicated reasoning checkpoints emit each structured
+stage directly. Omit it to retain the checkpoint's native reasoning trace and
+increase `--max-tokens` accordingly.
 
 The runner writes `predictions.csv`, `traces.jsonl`, `errors.jsonl`, and
 `metrics.json`. Input preparation, API-backed inference, cached trajectory

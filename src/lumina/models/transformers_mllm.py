@@ -28,6 +28,21 @@ def _resolve_snapshot(model_path: str) -> str:
     return str(candidates[0]) if candidates else model_path
 
 
+def _thinking_template_strategy(chat_template: object, enable_thinking: bool | None) -> str:
+    template = chat_template if isinstance(chat_template, str) else ""
+    if enable_thinking is None:
+        return "default"
+    if "enable_thinking" in template:
+        return "toggle"
+    dedicated_markers = (
+        "<|im_start|>assistant\\n<think>\\n",
+        "<|im_start|>assistant\n<think>\n",
+    )
+    if enable_thinking is False and any(marker in template for marker in dedicated_markers):
+        return "close_prefill"
+    return "default"
+
+
 class TransformersMLLMClient:
     """Generic Transformers image-text client, including local Qwen-VL paths."""
 
@@ -49,9 +64,9 @@ class TransformersMLLMClient:
             from transformers import AutoProcessor
         except ImportError as exc:
             raise RuntimeError("Install the local extra with `pip install -e .[local]`.") from exc
-        torch_dtype = dtype
+        model_dtype = dtype
         if dtype != "auto":
-            torch_dtype = getattr(torch, dtype)
+            model_dtype = getattr(torch, dtype)
         model_source = _resolve_snapshot(model_path)
         self.processor = AutoProcessor.from_pretrained(
             model_source,
@@ -65,13 +80,18 @@ class TransformersMLLMClient:
         self.model = model_class.from_pretrained(
             model_source,
             device_map=device_map,
-            torch_dtype=torch_dtype,
+            dtype=model_dtype,
             trust_remote_code=trust_remote_code,
             cache_dir=cache_dir,
             local_files_only=local_files_only,
         )
         self.max_new_tokens = max_new_tokens
         self.enable_thinking = enable_thinking
+        self._thinking_strategy = _thinking_template_strategy(
+            getattr(self.processor, "chat_template", None),
+            enable_thinking,
+        )
+        self._torch = torch
         self.call_count = 0
 
     def generate_json(
@@ -102,7 +122,7 @@ class TransformersMLLMClient:
             "return_dict": True,
             "return_tensors": "pt",
         }
-        if self.enable_thinking is not None:
+        if self._thinking_strategy == "toggle":
             template_kwargs["enable_thinking"] = self.enable_thinking
         fallback_kwargs = dict(template_kwargs)
         fallback_kwargs.pop("enable_thinking", None)
@@ -136,13 +156,38 @@ class TransformersMLLMClient:
             )
         if not hasattr(inputs, "items"):
             raise RuntimeError(f"Processor returned unsupported inputs after chat templating: {last_error}")
+        if self._thinking_strategy == "close_prefill":
+            suffix = self.processor.tokenizer(
+                "</think>\n\n",
+                add_special_tokens=False,
+                return_tensors="pt",
+            )["input_ids"]
+            input_ids = inputs["input_ids"]
+            suffix = suffix.to(input_ids.device).expand(input_ids.shape[0], -1)
+            inputs["input_ids"] = self._torch.cat((input_ids, suffix), dim=1)
+            if "attention_mask" in inputs:
+                attention_suffix = self._torch.ones(
+                    (inputs["attention_mask"].shape[0], suffix.shape[1]),
+                    dtype=inputs["attention_mask"].dtype,
+                    device=inputs["attention_mask"].device,
+                )
+                inputs["attention_mask"] = self._torch.cat(
+                    (inputs["attention_mask"], attention_suffix),
+                    dim=1,
+                )
         inputs = {
             key: value.to(self.model.device) if hasattr(value, "to") else value
             for key, value in inputs.items()
             if key != "token_type_ids"
         }
         self.call_count += 1
-        generated = self.model.generate(**inputs, do_sample=False, max_new_tokens=self.max_new_tokens)
+        generated = self.model.generate(
+            **inputs,
+            do_sample=False,
+            top_p=None,
+            top_k=None,
+            max_new_tokens=self.max_new_tokens,
+        )
         prompt_length = inputs["input_ids"].shape[1]
         raw = self.processor.batch_decode(generated[:, prompt_length:], skip_special_tokens=True)[0]
         return ModelResponse(payload=extract_json_object(raw), raw_text=raw, stage=stage)

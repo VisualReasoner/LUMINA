@@ -54,6 +54,49 @@ def _list(value: object, limit: int = 8) -> list[str]:
     return [str(item).strip() for item in value if str(item).strip()][:limit]
 
 
+def _belief_anchor_conflicts(
+    belief: BeliefState,
+    memory: Mapping[str, LocalComparison],
+) -> list[str]:
+    available = [modality for modality, item in memory.items() if item.anchor_available]
+    if not available:
+        return []
+    text = " ".join(
+        [
+            belief.summary,
+            *belief.supporting_evidence,
+            *belief.conflicting_evidence,
+            *belief.longitudinal_evidence,
+            *belief.open_uncertainties,
+            *(str(value) for value in belief.task_support.values()),
+        ]
+    ).lower()
+    text = re.sub(r"[_-]+", " ", text)
+    conflicts = []
+    for modality in available:
+        name = re.escape(modality.lower().replace("_", " ").replace("-", " "))
+        patterns = (
+            rf"\bno (?:valid )?(?:prior )?{name}(?: same modality)? anchor\b",
+            rf"\bmissing (?:valid )?(?:prior )?{name}(?: same modality)? anchor\b",
+            rf"\b(?:lack|lacks|lacking|lacked)\b[^.;]{{0,50}}\b{name}\b[^.;]{{0,30}}\banchor\b",
+            rf"\b{name}\b[^.;]{{0,40}}\banchor\b[^.;]{{0,40}}\b(?:missing|unavailable|absent)\b",
+            rf"\bwithout (?:a )?(?:valid )?(?:prior )?{name}(?: same modality)? anchor\b",
+        )
+        if any(re.search(pattern, text) for pattern in patterns):
+            conflicts.append(f"belief contradicts available same-modality anchor for {modality}")
+    if not conflicts and len(available) == len(memory):
+        generic_patterns = (
+            r"\bno (?:valid )?prior anchor\b",
+            r"\bno (?:valid )?same modality anchor\b",
+            r"\bmissing (?:valid )?(?:prior |same modality )?anchor\b",
+            r"\b(?:lack|lacks|lacking|lacked)\b[^.;]{0,40}\b(?:prior |same modality )anchor\b",
+            r"\bwithout (?:a )?(?:valid )?(?:prior |same modality )?anchor\b",
+        )
+        if any(re.search(pattern, text) for pattern in generic_patterns):
+            conflicts.append("belief contradicts available same-modality anchor")
+    return conflicts
+
+
 class EvidenceController:
     def __init__(
         self,
@@ -575,6 +618,7 @@ class EvidenceController:
             issues.append("belief omits reconciled conflicting evidence")
         if any(item.anchor_available for item in memory.values()) and not belief.longitudinal_evidence:
             issues.append("belief omits available within-subject longitudinal evidence")
+        issues.extend(_belief_anchor_conflicts(belief, memory))
         missing_dimensions = sorted(set(self.adapter.task.belief_dimensions) - set(belief.task_support))
         if missing_dimensions:
             issues.append(f"belief omits task-support fields: {', '.join(missing_dimensions)}")
@@ -700,6 +744,7 @@ class EvidenceController:
         raw_belief = self._generate(belief_request)
         belief = BeliefState.from_dict(raw_belief, self.adapter.task.labels)
         contradictions = self._contradictions(raw_belief, belief, reconciled, visit_memory)
+        remaining_contradictions = list(contradictions)
         repair_performed = False
         if contradictions and self.config.repair_limit > 0:
             repair_request = self.prompts.repair_belief(
@@ -711,8 +756,15 @@ class EvidenceController:
                 decision_context=decision_context,
                 contradictions=contradictions,
             )
-            belief = BeliefState.from_dict(self._generate(repair_request), self.adapter.task.labels)
+            repaired_payload = self._generate(repair_request)
+            belief = BeliefState.from_dict(repaired_payload, self.adapter.task.labels)
             belief.repaired = True
+            remaining_contradictions = self._contradictions(
+                repaired_payload,
+                belief,
+                reconciled,
+                visit_memory,
+            )
             repair_performed = True
             trace.append(
                 ActionTraceEntry(
@@ -730,7 +782,7 @@ class EvidenceController:
                 visit_memory=self._model_visit_memory(visit_memory),
                 reconciled=reconciled,
                 belief=belief,
-                contradictions=contradictions,
+                contradictions=remaining_contradictions,
                 repair_performed=repair_performed,
             )
             audit_payload = self._generate(audit_request)
