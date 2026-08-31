@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="LUMINA: LongitUdinal MultImodal reasoNing Agent for Medical Imaging.">
+  <meta name="theme-color" content="#204f74">
+  <title>LUMINA | Longitudinal Multimodal Imaging Agent</title>
+  <link rel="icon" href="images/LUMINIA_logo.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#content">Skip to content</a>
+  <header class="paper-hero">
+    <div class="hero-inner">
+      <img class="project-mark" src="images/LUMINIA_logo.png" alt="LUMINA logo" width="150" height="135">
+      <h1>LUMINA</h1>
+      <h2>LongitUdinal MultImodal reasoNing Agent for Medical Imaging</h2>
+      <!-- <p class="project-type">Research project</p> -->
+      <h3>EMNLP 2026</h3>
+      <hr>
+      <h3>
+           Zhaoqi An, Yunchang Xie, Xiaobing Yu, Yuyi Yang, Ahmad Chowdhury, Peijie Qiu
+      </h3>
+      <h3>
+        Washington University in St. Louis, St. Louis, MO, USA
+      </h3>
+      <div class="hero-rule"></div>
+      <p class="summary">Visit-driven inference &nbsp;·&nbsp; Multi-scale memory &nbsp;·&nbsp; Irregular clinical timelines</p>
+      <nav class="hero-links" aria-label="Project links">
+        <a href="https://github.com/VisualReasoner/LUMINA">Code</a>
+        <a href="#method">Method</a>
+        <a href="#results">Results</a>
+        <a href="#run">Run LUMINA</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="paper" id="content">
+    <section id="abstract">
+       <figure>
+        <a class="figure-link" href="images/LUMINA-teaser.jpg" target="_blank" rel="noopener">
+          <img src="images/LUMINA-teaser.jpg" alt="Comparison between collapsed static prompting (left) and LUMINA's structured longitudinal reasoning (right).">
+          <span>View full size</span>
+        </a>
+        <figcaption><strong>Figure 1.</strong> LUMINA receives irregular multimodal visits, plans evidence inspection, reconciles current and historical observations, audits the resulting interpretation, and updates visit, trajectory, and cross-subject memories.</figcaption>
+      </figure>
+      <h2>Abstract</h2>
+      <div class="section-rule"></div>
+      <p class="abstract">  Multimodal large language models (MLLMs) have shown strong performance in perception and question-answering, but many clinical decisions require reasoning across observations collected over time rather than from a single input. We study this problem in longitudinal modeling, where evidence evolves across visits. We introduce LUMINA (LongitUdinal MultImodal reasoNing Agent), a single-agent framework that incrementally builds an auditable evidence state before making predictions. Instead of predicting directly from all observations, LUMINA organizes current evidence, compares observations across prior visits, maintains longitudinal memory, optionally retrieves relevant cross-subject summaries, and verifies whether the accumulated evidence supports the final decision. We evaluate LUMINA on two subject-level benchmarks: Alzheimer’s disease classification and 36-month progression forecasting from observed visit prefixes. Across nine MLLM backbones, LUMINA consistently outperforms MLLM baselines and an adapted medical reasoning agent, achieving 13.8%--18.5% relative balanced accuracy gains on classification and 16.8%--24.8% gains on progression forecasting over the strongest non-agent baseline. Additional evaluations preserve the same method ordering on Parkinsonian-state classification and breast cancer treatment-response prediction.  </p>
+    </section>
+
+    <section id="method">
+      <h2>Longitudinal Reasoning with Multi-Scale Memory</h2>
+      <div class="section-rule"></div>
+      <p>Clinical follow-up rarely forms a complete, regularly sampled sequence. LUMINA organizes available scans into temporal visits and updates its state recurrently. A visit can contain any available modality; repeated observations of the same modality establish new visits and become explicit comparison anchors.</p>
+      <figure>
+        <a class="figure-link" href="images/LUMINA-main.jpg" target="_blank" rel="noopener">
+          <img src="images/LUMINA-main.jpg" alt="LUMINA system architecture showing longitudinal multimodal inputs, inspection planning, evidence reconciliation, verification, belief decisions, and multi-scale memories.">
+          <span>View full size</span>
+        </a>
+        <figcaption><strong>Figure 1.</strong> LUMINA receives irregular multimodal visits, plans evidence inspection, reconciles current and historical observations, audits the resulting interpretation, and updates visit, trajectory, and cross-subject memories.</figcaption>
+      </figure>
+    </section>
+
+    <section id="memory">
+      <h2>Recurrent Agent State</h2>
+      <div class="section-rule"></div>
+      <div class="state-grid">
+        <article><span>01</span><h3>Visit state</h3><p>Grounded findings and the belief produced for the active visit.</p></article>
+        <article><span>02</span><h3>Subject trajectory</h3><p>Meaningful changes carried across irregular intervals and modalities.</p></article>
+        <article><span>03</span><h3>Population memory</h3><p>Comparable cases for retrieval and optional calibration context.</p></article>
+      </div>
+      <p>Each visit update returns a structured visit state, subject-change state, trajectory update, diagnostic belief, and compact rationale. The controller can verify and repair inconsistent evidence before committing that state for the next visit.</p>
+    </section>
+
+    <section id="results">
+      <h2>Benchmark Results</h2>
+      <div class="section-rule"></div>
+      <p>The main evaluation compares LUMINA with MedAgent-Pro and the strongest non-agent baseline on the same cohort. Results span nine vision-language model backbones and two tasks: AD-continuum classification and progression forecasting.</p>
+      <div class="key-results" aria-label="GPT-4o-mini headline results">
+        <article><strong>85.10</strong><span>AD-continuum balanced accuracy</span></article>
+        <article><strong>81.46</strong><span>AD-continuum Macro-F1</span></article>
+        <article><strong>77.68</strong><span>Progression balanced accuracy</span></article>
+        <article><strong>71.26</strong><span>Progression Macro-F1</span></article>
+      </div>
+      <figure>
+        <a class="figure-link" href="images/LUMINA_performance.png" target="_blank" rel="noopener">
+          <img src="images/LUMINA_performance.png" alt="Performance comparison of LUMINA, MedAgent-Pro, and the best non-agent baseline on AD-continuum and progression-forecasting tasks." loading="lazy">
+          <span>View full size</span>
+        </a>
+        <figcaption><strong>Figure 2.</strong> GPT-4o-mini benchmark comparison. Balanced accuracy is shown with 95% bootstrap confidence-interval half-widths; hatched bars show Macro-F1.</figcaption>
+      </figure>
+      <figure class="table-figure">
+        <a class="figure-link scrollable" href="images/main_comparison.png" target="_blank" rel="noopener">
+          <img src="images/main_comparison.png" alt="Full benchmark results table across nine model backbones for AD-continuum and progression-forecasting tasks." loading="lazy">
+          <span>View full size</span>
+        </a>
+        <figcaption><strong>Table 1.</strong> Main benchmark results across model backbones. Future follow-up labels are excluded from the agent input for progression forecasting.</figcaption>
+      </figure>
+    </section>
+
+    <section id="ablation">
+      <h2>SMC Ablation</h2>
+      <div class="section-rule"></div>
+      <p>Sequential Monte Carlo selection prioritizes trajectory events as the longitudinal record grows. The ablation evaluates both the quality of selected evidence and the downstream contribution of this component.</p>
+      <figure>
+        <a class="figure-link" href="images/LUMINA_ablation.png" target="_blank" rel="noopener">
+          <img src="images/LUMINA_ablation.png" alt="SMC ablation comparing selection quality by trajectory length and downstream balanced accuracy and Macro-F1." loading="lazy">
+          <span>View full size</span>
+        </a>
+        <figcaption><strong>Figure 3.</strong> Full LUMINA maintains stronger selection quality for longer event logs and improves GPT-4o-mini balanced accuracy and Macro-F1 over the no-SMC variant.</figcaption>
+      </figure>
+    </section>
+
+    <section id="evaluation">
+      <h2>Evaluation Design</h2>
+      <div class="section-rule"></div>
+      <div class="method-table" role="table" aria-label="Compared methods">
+        <div class="method-row method-head" role="row"><span role="columnheader">Method</span><span role="columnheader">Processing</span><span role="columnheader">Memory</span></div>
+        <div class="method-row" role="row"><strong role="cell">MLLM Bundle</strong><span role="cell">Single subject-level pass</span><span role="cell">None</span></div>
+        <div class="method-row" role="row"><strong role="cell">MLLM Visit Sequence</strong><span role="cell">One pass per visit</span><span role="cell">Raw text carry-over</span></div>
+        <div class="method-row emphasized" role="row"><strong role="cell">LUMINA</strong><span role="cell">Recurrent visit updates</span><span role="cell">Visit, trajectory, population</span></div>
+      </div>
+    </section>
+
+    <section id="run">
+      <h2>Run the Full Pipeline</h2>
+      <div class="section-rule"></div>
+      <p>The end-to-end runner builds the visit index, optionally creates a population bank, executes the benchmark, and runs the ablation suite.</p>
+      <div class="code-block">
+        <div class="code-label"><span>PowerShell</span><button type="button" data-copy-target="pipeline-command">Copy</button></div>
+        <pre><code id="pipeline-command">python scripts/run_full_pipeline.py `
+  --data-root data `
+  --model-name Qwen/Qwen3-VL-8B-Thinking `
+  --alignment-quality strict `
+  --cohort-sampling balanced_dx `
+  --output-dir data/results/full_pipeline_run</code></pre>
+      </div>
+      <p class="center"><a class="project-button" href="https://github.com/VisualReasoner/LUMINA#how-to-run">Complete documentation on GitHub</a></p>
+    </section>
+  </main>
+
+  <footer>
+    <p>LUMINA · Longitudinal multimodal imaging intelligence</p>
+    <p><a href="https://github.com/VisualReasoner/LUMINA">github.com/VisualReasoner/LUMINA</a></p>
+  </footer>
+  <script src="script.js"></script>
+</body>
+</html>

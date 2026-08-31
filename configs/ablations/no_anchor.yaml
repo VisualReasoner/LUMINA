@@ -1,0 +1,7 @@
+variant:
+  id: no_anchor
+  component: anchored comparison
+  description: Disable past same-modality anchor comparison only.
+
+controller:
+  use_anchor_comparisons: false

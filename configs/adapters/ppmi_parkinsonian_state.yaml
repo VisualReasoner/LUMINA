@@ -1,0 +1,55 @@
+adapter_name: ppmi_parkinsonian_state
+context_columns: [age, sex]
+
+task:
+  name: parkinsonian_state_classification
+  label_column: parkinsonian_state_3way
+  labels: [HC, Prodromal, PD]
+  label_aliases:
+    healthy_control: HC
+    hc: HC
+    prodromal: Prodromal
+    parkinsons_disease: PD
+    pd: PD
+  target_policy: latest_eligible_visit
+  minimum_prefix_visits: 2
+  require_any_target_modality: [Structural_Imaging, DaTscan_SPECT]
+  inspection_rules:
+    - Identify current structural and DaTscan evidence and valid same-modality anchors.
+    - Keep current appearance separate from longitudinal change.
+  reconciliation_rules:
+    - Reconcile structural evidence with the distribution and asymmetry of DaTscan uptake.
+    - Preserve missing anchors and discordant modalities as uncertainty.
+  belief_rubric:
+    - Assess whether current and longitudinal imaging remain within the healthy-control pattern.
+    - Distinguish limited or equivocal abnormality from a more established Parkinsonian imaging pattern.
+    - Use the three labels only as defined by the active PPMI evaluation cohort.
+  belief_dimensions:
+    dopaminergic_pattern: Current uptake distribution, asymmetry, and abnormality strength.
+    longitudinal_dopaminergic_change: Supported same-modality change in uptake pattern.
+    structural_context: Current and longitudinal structural evidence.
+    anchor_quality: Availability and quality of same-modality anchors.
+    overall_evidence_quality: Cross-modality consistency and unresolved uncertainty.
+
+modalities:
+  - name: Structural_Imaging
+    path_column: structural_imaging_paths
+    role: structural context
+    observation_questions:
+      - What structural findings are visible and how certain are they?
+    comparison_questions:
+      - Is there visible structural change relative to the prior structural study?
+  - name: DaTscan_SPECT
+    path_column: datscan_spect_paths
+    role: striatal dopaminergic imaging evidence
+    observation_questions:
+      - What uptake distribution and asymmetry are visible?
+      - Is the current pattern normal, equivocal, or clearly abnormal?
+    comparison_questions:
+      - Has uptake distribution or asymmetry changed relative to the prior DaTscan?
+
+references:
+  enabled: false
+
+memory:
+  cross_subject_enabled: false

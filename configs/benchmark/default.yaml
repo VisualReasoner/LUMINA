@@ -1,0 +1,23 @@
+controller:
+  use_references: true
+  use_anchor_comparisons: true
+  use_cross_subject_memory: true
+  cross_subject_top_k: 3
+  retrieve_when_ambiguous: true
+  repair_limit: 1
+  use_audit: true
+  schema_retry_limit: 1
+
+trajectory:
+  use_trajectory_memory: true
+  use_smc: true
+  max_active_events: 4
+  recency_half_life_days: 540
+  change_grade_weight: 0.45
+  confidence_weight: 0.35
+  recency_weight: 0.20
+
+evaluation:
+  require_existing_images: true
+  bootstrap_samples: 1000
+  bootstrap_seed: 17

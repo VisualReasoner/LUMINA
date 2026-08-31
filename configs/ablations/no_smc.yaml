@@ -1,0 +1,7 @@
+variant:
+  id: no_smc
+  component: SMC-style trajectory compression
+  description: Replace importance-weighted event selection with the recency control.
+
+trajectory:
+  use_smc: false

@@ -1,0 +1,8 @@
+variant:
+  id: no_verification
+  component: verification and repair
+  description: Disable the bounded verification, repair, and audit pass.
+
+controller:
+  repair_limit: 0
+  use_audit: false

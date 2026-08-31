@@ -1,0 +1,7 @@
+variant:
+  id: no_trajectory
+  component: trajectory memory
+  description: Disable compact within-subject trajectory memory only.
+
+trajectory:
+  use_trajectory_memory: false

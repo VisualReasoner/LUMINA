@@ -1,0 +1,7 @@
+variant:
+  id: no_cross_subject
+  component: cross-subject memory
+  description: Disable optional frozen cross-subject retrieval only.
+
+controller:
+  use_cross_subject_memory: false

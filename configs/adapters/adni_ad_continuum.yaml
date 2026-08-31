@@ -1,0 +1,93 @@
+adapter_name: adni_ad_continuum
+context_columns: [age, sex, race]
+subject_id_aliases: [PTID]
+context_aliases:
+  age: [AGE]
+  sex: [PTGENDER]
+  race: [PTRACCAT]
+
+task:
+  name: ad_continuum
+  label_column: ad_continuum_3way
+  labels: [CU_nonAD, Preclinical_AD, Symptomatic_AD]
+  label_aliases:
+    cu: CU_nonAD
+    cu_nonad: CU_nonAD
+    cognitively_unimpaired: CU_nonAD
+    preclinical_ad: Preclinical_AD
+    symptomatic_ad: Symptomatic_AD
+  target_policy: latest_eligible_visit
+  minimum_prefix_visits: 2
+  require_any_target_modality: [MRI, Amyloid_PET, Tau_PET]
+  inspection_rules:
+    - Identify all current modalities and the latest valid prior same-modality anchors.
+    - Ground AD-pattern biological evidence separately from downstream structural evidence.
+    - Resolve whether apparent PET burden is convincing after visual calibration.
+  reconciliation_rules:
+    - Treat amyloid and tau PET as primary evidence of AD-pattern biology.
+    - Treat MRI severity and MRI worsening as primary symptomatic-stage support.
+    - Stable or weak MRI evidence can limit symptomatic-stage support even when PET burden is present.
+    - A subtle reference-relative deviation or subtle increase alone does not establish Preclinical AD.
+  belief_rubric:
+    - Assess current amyloid and tau evidence for convincing, persistent AD-pattern biological burden.
+    - Assess MRI current severity and same-modality worsening as downstream structural and symptomatic-stage support.
+    - Use CU_nonAD when AD-pattern biological evidence remains weak, equivocal, or limited to subtle deviation without persistent support.
+    - Use Preclinical_AD when AD-pattern biological burden is convincing but downstream structural support remains weak or subtle.
+    - Use Symptomatic_AD when AD-pattern biology is supported and MRI provides meaningful structural severity or worsening; repeated tau worsening is not required.
+    - Preserve uncertainty and the second-best class when modalities conflict or anchors are missing.
+  belief_dimensions:
+    mri_current_severity: Current MRI structural severity at the target visit.
+    mri_longitudinal_change: Supported direction and magnitude of same-modality MRI change.
+    mri_tempo: MRI change interpreted relative to elapsed time.
+    mri_anchor_quality: Availability and quality of the MRI anchor.
+    amyloid_status: Strength and uncertainty of current amyloid-pattern evidence.
+    tau_status: Strength and uncertainty of current tau-pattern evidence.
+    tau_pattern_severity: Spatial extent and severity of the visible tau pattern.
+    pet_longitudinal_change: Supported same-modality PET change or explicit unavailability.
+    pathology_state: Overall AD-pattern biological support after reconciling PET evidence.
+    stage_support: Downstream symptomatic-stage support, driven primarily by MRI severity or worsening.
+    longitudinal_role: Whether subject-specific change supports stability, progression, or remains inconclusive.
+    longitudinal_pattern: Multi-visit pattern represented by local comparisons and active trajectory events.
+    tempo_assessment: Overall change tempo after accounting for elapsed intervals.
+    anchor_quality: Overall quality and coverage of same-modality anchors.
+    overall_evidence_quality: Sufficiency, conflicts, and remaining uncertainty in the evidence state.
+
+modalities:
+  - name: MRI
+    path_column: mri_paths
+    reference_column: mri_reference_candidates
+    role: downstream structural and symptomatic-stage evidence
+    observation_questions:
+      - What structural abnormalities or atrophy patterns are visible?
+      - Is the current structural severity subtle, moderate, or marked?
+    comparison_questions:
+      - Is there visible structural worsening relative to the prior MRI?
+      - Is the amount of change meaningful given the elapsed time?
+  - name: Amyloid_PET
+    path_column: amyloid_pet_paths
+    reference_column: amyloid_pet_reference_candidates
+    role: amyloid-burden and AD-pattern biological evidence
+    observation_questions:
+      - Is cortical uptake visibly elevated and spatially consistent with amyloid burden?
+      - How strong is the visible burden and what remains uncertain?
+    comparison_questions:
+      - Has amyloid burden changed relative to the prior amyloid PET?
+      - Is the difference localized, diffuse, or uncertain?
+  - name: Tau_PET
+    path_column: tau_pet_paths
+    reference_column: tau_pet_reference_candidates
+    role: tau-burden and spatial disease-pattern evidence
+    observation_questions:
+      - Is uptake elevated in a convincing AD-pattern distribution?
+      - Is burden limited, intermediate, advanced, or uncertain?
+    comparison_questions:
+      - Has tau burden or spatial extent changed relative to the prior tau PET?
+      - Is the change supported across comparable views?
+
+references:
+  enabled: true
+  match_primary: age
+  match_secondary: sex
+
+memory:
+  cross_subject_enabled: true

@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lumina-longitudinal"
+version = "0.1.0"
+description = "Longitudinal multimodal evidence-state reasoning agent"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {file = "LICENSE"}
+authors = [
+  {name = "Zhaoqi An"},
+  {name = "Yunchang Xie"},
+  {name = "Xiaobing Yu"},
+  {name = "Yuyi Yang"},
+  {name = "Ahmad Chowdhury"},
+  {name = "Peijie Qiu"},
+]
+keywords = ["medical imaging", "multimodal reasoning", "longitudinal analysis", "MLLM"]
+dependencies = [
+  "numpy>=1.24",
+  "pandas>=2.0",
+  "Pillow>=10.0",
+  "PyYAML>=6.0",
+  "nibabel>=5.2",
+]
+
+[project.optional-dependencies]
+api = ["openai>=1.30"]
+local = [
+  "torch>=2.1",
+  "torchvision>=0.16",
+  "transformers>=4.57,<5",
+  "accelerate>=0.30",
+  "qwen-vl-utils>=0.0.14",
+]
+test = ["pytest>=8.0"]
+
+[project.urls]
+Repository = "https://github.com/VisualReasoner/LUMINA"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

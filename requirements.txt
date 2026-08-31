@@ -1,0 +1,11 @@
+numpy>=1.24
+pandas>=2.0
+Pillow>=10.0
+PyYAML>=6.0
+nibabel>=5.2
+openai>=1.30
+torch>=2.1
+torchvision>=0.16
+transformers>=4.57,<5
+accelerate>=0.30
+qwen-vl-utils>=0.0.14

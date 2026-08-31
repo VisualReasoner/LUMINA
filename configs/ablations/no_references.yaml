@@ -1,0 +1,7 @@
+variant:
+  id: no_references
+  component: reference-comparator protocol control
+  description: Disable benchmark-supplied visual reference calibration.
+
+controller:
+  use_references: false

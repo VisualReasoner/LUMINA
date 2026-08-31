@@ -1,0 +1,64 @@
+adapter_name: acrin6698_pcr
+context_columns: [age]
+
+task:
+  name: breast_treatment_response
+  label_column: pcr_binary
+  labels: [non_pCR, pCR]
+  label_aliases:
+    non_pcr: non_pCR
+    pcr: pCR
+  target_policy: latest_eligible_visit
+  target_filter:
+    column: timepoint
+    values: [T1]
+  minimum_prefix_visits: 2
+  required_target_modalities: [T2_MRI, DWI_MRI, DCE_MRI]
+  required_prior_modalities: [T2_MRI, DWI_MRI, DCE_MRI]
+  inspection_rules:
+    - Use the pretreatment T0 study as the same-modality anchor for the early-treatment T1 study.
+    - Inspect each MRI acquisition separately before reconciling treatment-response evidence.
+  reconciliation_rules:
+    - Reconcile visible T2, diffusion-weighted, and contrast-enhanced changes across T0 and T1.
+    - Preserve disagreement among acquisitions rather than averaging them into one response score.
+    - Do not use derived ADC or functional-tumor-volume variables.
+  belief_rubric:
+    - Assess whether the early-treatment imaging prefix shows a strong and consistent visible response relative to pretreatment imaging.
+    - Use pCR only when multimodal change supports the stronger response category under the benchmark convention.
+    - Use non_pCR when residual or conflicting imaging evidence remains more consistent with incomplete response.
+  belief_dimensions:
+    t2_response: Visible morphology and extent change from T0 to T1.
+    diffusion_response: Visible diffusion-weighted change from T0 to T1.
+    enhancement_response: Visible contrast-enhancement change from T0 to T1.
+    cross_modality_consistency: Agreement or conflict across the three acquisitions.
+    anchor_quality: Availability and quality of the T0 same-modality anchors.
+    overall_evidence_quality: Sufficiency and uncertainty of the T0-to-T1 prefix.
+
+modalities:
+  - name: T2_MRI
+    path_column: t2_mri_paths
+    role: tumor morphology and structural response evidence
+    observation_questions:
+      - What residual morphology and extent are visible at T1?
+    comparison_questions:
+      - How has visible morphology and extent changed from T0 to T1?
+  - name: DWI_MRI
+    path_column: dwi_mri_paths
+    role: diffusion-weighted response evidence
+    observation_questions:
+      - What residual diffusion-weighted abnormality is visible at T1?
+    comparison_questions:
+      - How has diffusion-weighted appearance changed from T0 to T1?
+  - name: DCE_MRI
+    path_column: dce_mri_paths
+    role: contrast-enhancement response evidence
+    observation_questions:
+      - What residual enhancement is visible at T1?
+    comparison_questions:
+      - How has enhancement extent or intensity changed from T0 to T1?
+
+references:
+  enabled: false
+
+memory:
+  cross_subject_enabled: false

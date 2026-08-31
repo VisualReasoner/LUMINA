@@ -1,0 +1,89 @@
+adapter_name: adni_progression_forecasting
+context_columns: [age, sex, race]
+subject_id_aliases: [PTID]
+context_aliases:
+  age: [AGE]
+  sex: [PTGENDER]
+  race: [PTRACCAT]
+
+task:
+  name: progression_forecasting
+  label_column: progression_forecasting_3way
+  labels: [stable, mild_progression, clear_progression]
+  label_aliases:
+    stable: stable
+    mild: mild_progression
+    mild_progression: mild_progression
+    clear: clear_progression
+    clear_progression: clear_progression
+  target_policy: latest_eligible_visit
+  minimum_prefix_visits: 2
+  require_any_target_modality: [MRI, Amyloid_PET, Tau_PET]
+  inspection_rules:
+    - Identify visible longitudinal evidence and valid same-modality anchors without using future follow-up.
+    - Prioritize MRI severity, MRI worsening, elapsed time, and anchor quality.
+    - Treat PET as supporting disease-biology context rather than a direct future-outcome label.
+  reconciliation_rules:
+    - Give greatest weight to visible within-subject MRI worsening and its tempo.
+    - Use amyloid and tau PET to contextualize disease biology and strengthen or weaken a structural progression interpretation.
+    - Current burden without visible worsening does not by itself establish near-term progression.
+    - Missing anchors and modality conflict must remain explicit uncertainty.
+  belief_rubric:
+    - Assess current MRI structural severity, longitudinal MRI change, elapsed-time-adjusted tempo, and MRI anchor quality first.
+    - Assess PET burden and PET change only as supporting disease-biology context.
+    - Use stable when the visible prefix supports little or no meaningful worsening.
+    - Use mild_progression when some worsening is visible but evidence is limited, mixed, or lacks the consistency required for the strongest bucket.
+    - Use clear_progression only when the visible prefix already supports stronger and more consistent worsening.
+    - Infer the held-out progression category under the fixed 36-month benchmark convention without using future follow-up.
+  belief_dimensions:
+    mri_current_severity: Current MRI structural severity at the target visit.
+    mri_longitudinal_change: Supported direction and magnitude of same-modality MRI change.
+    mri_tempo: MRI change interpreted relative to elapsed time.
+    mri_anchor_quality: Availability and quality of the MRI anchor.
+    amyloid_status: Current amyloid-pattern evidence as supporting biological context.
+    tau_status: Current tau-pattern evidence as supporting biological context.
+    tau_pattern_severity: Spatial extent and severity of the visible tau pattern.
+    pet_longitudinal_change: Supported same-modality PET change or explicit unavailability.
+    pathology_state: Overall disease-biology context without treating PET as a future label.
+    stage_support: Current downstream structural support visible in the prefix.
+    longitudinal_role: Whether subject-specific change supports stability or progression.
+    longitudinal_pattern: Multi-visit pattern represented by local comparisons and active trajectory events.
+    tempo_assessment: Overall structural change tempo after accounting for elapsed intervals.
+    anchor_quality: Overall quality and coverage of same-modality anchors.
+    overall_evidence_quality: Sufficiency, consistency, and uncertainty of the visible prefix.
+
+modalities:
+  - name: MRI
+    path_column: mri_paths
+    reference_column: mri_reference_candidates
+    role: primary structural progression evidence
+    observation_questions:
+      - What is the current structural severity?
+      - Which visible regions are most informative for downstream structural burden?
+    comparison_questions:
+      - Is there visible structural worsening relative to the prior MRI?
+      - How concerning is the change given the elapsed interval and anchor quality?
+  - name: Amyloid_PET
+    path_column: amyloid_pet_paths
+    reference_column: amyloid_pet_reference_candidates
+    role: supporting amyloid-burden context
+    observation_questions:
+      - Is current amyloid burden visually convincing after calibration?
+    comparison_questions:
+      - Is visible amyloid burden stable or changing relative to the prior amyloid PET?
+  - name: Tau_PET
+    path_column: tau_pet_paths
+    reference_column: tau_pet_reference_candidates
+    role: supporting tau-burden and disease-pattern context
+    observation_questions:
+      - What is the current tau-pattern severity and spatial extent?
+    comparison_questions:
+      - Is tau burden or spatial extent worsening relative to the prior tau PET?
+
+references:
+  enabled: true
+  match_primary: age
+  match_secondary: sex
+
+memory:
+  cross_subject_enabled: true
