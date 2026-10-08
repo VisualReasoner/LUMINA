@@ -45,6 +45,5 @@ def test_toy_replay_runs_end_to_end_without_a_model(tmp_path: Path) -> None:
     metrics = json.loads((output_dir / "metrics.json").read_text(encoding="utf-8"))
     assert metrics["completed"] == 1
     assert metrics["errors"] == 0
-    assert metrics["ablation"] == "full"
     assert (output_dir / "predictions.csv").is_file()
     assert (output_dir / "traces.jsonl").is_file()

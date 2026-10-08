@@ -117,7 +117,6 @@ set, or prediction target.
 
 ```text
 configs/adapters/      task and dataset adapters
-configs/ablations/     component-level ablation overlays
 scripts/               inference, evaluation, replay, and memory/reference utilities
 src/lumina/data/       prepared input loading and reference metadata
 src/lumina/agent/      evidence controller and longitudinal runtime

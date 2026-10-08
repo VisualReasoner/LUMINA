@@ -574,7 +574,7 @@ class EvidenceController:
             if not self.config.use_anchor_comparisons:
                 memory[modality] = LocalComparison.unavailable(
                     modality,
-                    "Same-modality anchor comparison is disabled by the active ablation.",
+                    "Same-modality anchor comparison is disabled in the controller configuration.",
                     current_payload,
                 )
                 continue
@@ -841,7 +841,7 @@ class EvidenceController:
                 summary=str(audit_payload.get("summary") or "").strip(),
             )
         else:
-            audit = AuditRecord(repair_performed=repair_performed, summary="Audit disabled by active ablation.")
+            audit = AuditRecord(repair_performed=repair_performed, summary="Audit disabled in the controller configuration.")
         trace.append(
             ActionTraceEntry(
                 index=len(trace) + 1,

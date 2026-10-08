@@ -28,22 +28,6 @@ evaluation defaults. In particular, it fixes the active-event budget, SMC
 utility weights, recency half-life, schema retry limit, repair limit, bootstrap
 sample count, and bootstrap seed.
 
-Component ablations are overlays in `configs/ablations/`. They are applied to
-the same runner and controller:
-
-```bash
-python scripts/run_ablation.py \
-  --visit-index-csv /path/to/visit_index.csv \
-  --routed-targets-csv /path/to/routed_targets.csv \
-  --adapter-yaml configs/adapters/adni_ad_continuum.yaml \
-  --backend transformers \
-  --model /path/to/model \
-  --output-root /path/to/ablation-results
-```
-
-The `no_references` configuration is a reference-protocol control and is not
-part of the component-ablation suite used by default.
-
 ## Input Boundaries
 
 Model-facing prompts receive processed images, visit order and dates, available

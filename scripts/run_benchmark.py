@@ -12,7 +12,7 @@ if str(SRC_ROOT) not in sys.path:
 
 from lumina.adapters import load_adapter
 from lumina.agent import ControllerConfig, EvidenceController, LUMINARuntime
-from lumina.configuration import load_experiment_settings
+from lumina.configuration import load_yaml
 from lumina.data.io import load_tables
 from lumina.eval import BenchmarkConfig, BenchmarkRunner
 from lumina.memory import CrossSubjectBank, TrajectoryConfig
@@ -43,20 +43,12 @@ def main() -> None:
     )
     parser.add_argument("--max-tokens", type=int, default=1400)
     parser.add_argument("--cross-subject-bank", type=Path, default=None)
-    parser.add_argument(
-        "--ablation",
-        choices=["full", "no_anchor", "no_trajectory", "no_cross_subject", "no_smc", "no_verification", "no_references"],
-        default="full",
-    )
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--fail-fast", action="store_true")
     args = parser.parse_args()
 
-    ablation_yaml = ROOT / "configs" / "ablations" / f"{args.ablation}.yaml"
-    if not ablation_yaml.is_file():
-        raise FileNotFoundError(f"Ablation configuration not found: {ablation_yaml}")
-    settings = load_experiment_settings(args.benchmark_yaml, ablation_yaml)
+    settings = load_yaml(args.benchmark_yaml)
     controller_settings = dict(settings.get("controller") or {})
     trajectory_settings = dict(settings.get("trajectory") or {})
     evaluation_settings = dict(settings.get("evaluation") or {})
@@ -104,7 +96,6 @@ def main() -> None:
         ),
     )
     summary = runner.run(limit=args.limit)
-    summary["ablation"] = args.ablation
     (args.output_dir / "metrics.json").write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
     print(json.dumps(summary, indent=2, sort_keys=True))
 

@@ -2,43 +2,41 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from lumina.configuration import load_experiment_settings
+import pytest
+
+from lumina.agent import ControllerConfig
+from lumina.configuration import load_yaml
+from lumina.memory import TrajectoryConfig
 
 
 ROOT = Path(__file__).resolve().parents[1]
 BASE = ROOT / "configs" / "benchmark" / "default.yaml"
-ABLATIONS = ROOT / "configs" / "ablations"
 
 
-def _settings(name: str) -> dict:
-    return load_experiment_settings(BASE, ABLATIONS / f"{name}.yaml")
+def test_default_configuration_enables_full_pipeline() -> None:
+    settings = load_yaml(BASE)
+    controller = ControllerConfig(**settings["controller"])
+    assert controller.use_references
+    assert controller.use_anchor_comparisons
+    assert controller.use_cross_subject_memory
+    assert controller.use_audit
+    assert controller.repair_limit == 1
+
+    trajectory = dict(settings["trajectory"])
+    assert trajectory.pop("use_trajectory_memory") is True
+    assert trajectory.pop("use_smc") is True
+    assert TrajectoryConfig(**trajectory).max_active_events == 4
+    assert settings["evaluation"]["require_existing_images"] is True
 
 
-def test_ablation_overlays_change_only_the_named_component() -> None:
-    full = _settings("full")
-    checks = {
-        "no_anchor": ("controller", "use_anchor_comparisons", False),
-        "no_trajectory": ("trajectory", "use_trajectory_memory", False),
-        "no_cross_subject": ("controller", "use_cross_subject_memory", False),
-        "no_smc": ("trajectory", "use_smc", False),
-        "no_references": ("controller", "use_references", False),
-    }
-    for name, (section, key, expected) in checks.items():
-        settings = _settings(name)
-        assert settings[section][key] is expected
-        for stable_section in ("controller", "trajectory", "evaluation"):
-            expected_section = dict(full[stable_section])
-            actual_section = dict(settings[stable_section])
-            if stable_section == section:
-                expected_section[key] = expected
-            assert actual_section == expected_section
+def test_load_yaml_preserves_user_settings(tmp_path: Path) -> None:
+    path = tmp_path / "settings.yaml"
+    path.write_text("evaluation:\n  bootstrap_samples: 50\n", encoding="utf-8")
+    assert load_yaml(path) == {"evaluation": {"bootstrap_samples": 50}}
 
 
-def test_verification_ablation_disables_only_bounded_repair_and_audit() -> None:
-    full = _settings("full")
-    settings = _settings("no_verification")
-    expected_controller = dict(full["controller"])
-    expected_controller.update({"repair_limit": 0, "use_audit": False})
-    assert settings["controller"] == expected_controller
-    assert settings["trajectory"] == full["trajectory"]
-    assert settings["evaluation"] == full["evaluation"]
+def test_load_yaml_rejects_non_mapping(tmp_path: Path) -> None:
+    path = tmp_path / "settings.yaml"
+    path.write_text("- unexpected\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="Configuration must be a mapping"):
+        load_yaml(path)
