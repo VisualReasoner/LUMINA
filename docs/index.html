@@ -128,17 +128,20 @@
     </section>
 
     <section id="run">
-      <h2>Run the Full Pipeline</h2>
+      <h2>Run LUMINA</h2>
       <div class="section-rule"></div>
-      <p>The end-to-end runner builds the visit index, optionally creates a population bank, executes the benchmark, and runs the ablation suite.</p>
+      <p>After installation, run this synthetic replay example from the repository root to check the complete controller without loading a model or using medical data. For model-backed inference and input preparation, see the documentation below.</p>
       <div class="code-block">
         <div class="code-label"><span>PowerShell</span><button type="button" data-copy-target="pipeline-command">Copy</button></div>
-        <pre><code id="pipeline-command">python scripts/run_full_pipeline.py `
-  --data-root data `
-  --model-name Qwen/Qwen3-VL-8B-Thinking `
-  --alignment-quality strict `
-  --cohort-sampling balanced_dx `
-  --output-dir data/results/full_pipeline_run</code></pre>
+        <pre><code id="pipeline-command">python scripts/create_toy_example.py --output-dir tmp/lumina_toy
+
+python scripts/run_benchmark.py `
+  --visit-index-csv tmp/lumina_toy/visit_index.csv `
+  --routed-targets-csv tmp/lumina_toy/routed_targets.csv `
+  --adapter-yaml configs/adapters/adni_ad_continuum.yaml `
+  --backend replay `
+  --replay-json tmp/lumina_toy/replay_responses.json `
+  --output-dir tmp/lumina_toy/results</code></pre>
       </div>
       <p class="center"><a class="project-button" href="https://github.com/VisualReasoner/LUMINA#how-to-run">Complete documentation on GitHub</a></p>
     </section>
