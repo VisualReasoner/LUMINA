@@ -3,7 +3,6 @@ context_columns: [age, sex]
 
 task:
   name: parkinsonian_state_classification
-  label_column: parkinsonian_state_3way
   labels: [HC, Prodromal, PD]
   label_aliases:
     healthy_control: HC
@@ -11,7 +10,6 @@ task:
     prodromal: Prodromal
     parkinsons_disease: PD
     pd: PD
-  target_policy: latest_eligible_visit
   minimum_prefix_visits: 2
   require_any_target_modality: [Structural_Imaging, DaTscan_SPECT]
   inspection_rules:

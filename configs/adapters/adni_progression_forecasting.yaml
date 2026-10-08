@@ -8,7 +8,6 @@ context_aliases:
 
 task:
   name: progression_forecasting
-  label_column: progression_forecasting_3way
   labels: [stable, mild_progression, clear_progression]
   label_aliases:
     stable: stable
@@ -16,7 +15,6 @@ task:
     mild_progression: mild_progression
     clear: clear_progression
     clear_progression: clear_progression
-  target_policy: latest_eligible_visit
   minimum_prefix_visits: 2
   require_any_target_modality: [MRI, Amyloid_PET, Tau_PET]
   inspection_rules:

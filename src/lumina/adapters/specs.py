@@ -21,10 +21,8 @@ def _string_list(value: object, *, field_name: str) -> tuple[str, ...]:
 @dataclass(frozen=True)
 class TaskSpec:
     name: str
-    label_column: str
     labels: tuple[str, ...]
     label_aliases: Mapping[str, str] = field(default_factory=dict)
-    target_policy: str = "latest_eligible_visit"
     target_filter_column: str | None = None
     target_filter_values: tuple[str, ...] = ()
     minimum_prefix_visits: int = 2
@@ -45,9 +43,8 @@ class TaskSpec:
         if len(normalized_labels) != len(set(normalized_labels)):
             raise ValueError("task.labels contains normalization collisions.")
         name = str(payload.get("name") or "").strip()
-        label_column = str(payload.get("label_column") or "").strip()
-        if not name or not label_column:
-            raise ValueError("task.name and task.label_column are required.")
+        if not name:
+            raise ValueError("task.name is required.")
         aliases = {
             str(key).strip().lower().replace("-", "_").replace(" ", "_"): str(value).strip()
             for key, value in dict(payload.get("label_aliases") or {}).items()
@@ -71,10 +68,8 @@ class TaskSpec:
         }
         return cls(
             name=name,
-            label_column=label_column,
             labels=labels,
             label_aliases=aliases,
-            target_policy=str(payload.get("target_policy") or "latest_eligible_visit"),
             target_filter_column=target_filter_column,
             target_filter_values=target_filter_values,
             minimum_prefix_visits=max(1, int(payload.get("minimum_prefix_visits", 2))),

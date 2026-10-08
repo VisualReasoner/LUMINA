@@ -11,7 +11,6 @@ import pytest
 from lumina.adapters import load_adapter
 from lumina.agent import ControllerConfig, EvidenceController, LUMINARuntime
 from lumina.data.io import build_subject_prefix
-from lumina.data.targets import RoutedTargetConfig, build_routed_targets
 from lumina.models import ReplayModelClient
 from lumina.memory.cross_subject import CrossSubjectBank, CrossSubjectEntry
 from lumina.schemas.states import ImageRef, VisitInput
@@ -139,7 +138,7 @@ def _responses(adapter, leading_label: str) -> dict[str, list[dict]]:
 
 
 @pytest.mark.parametrize(("adapter_name", "target_label"), ADAPTERS)
-def test_every_adapter_routes_and_runs_the_shared_replay_pipeline(
+def test_every_adapter_loads_and_runs_the_shared_replay_pipeline(
     tmp_path: Path,
     adapter_name: str,
     target_label: str,
@@ -163,27 +162,20 @@ def test_every_adapter_routes_and_runs_the_shared_replay_pipeline(
             row[adapter.task.target_filter_column] = "T0" if index == 1 else "T1"
         rows.append(row)
     visit_index = pd.DataFrame(rows)
-    labels = pd.DataFrame(
-        [
-            {
-                "subject_id": "private_subject_identifier",
-                "visit_id": "private_subject_identifier_v2",
-                adapter.task.label_column: target_label,
-            }
-        ]
-    )
-    routed, report = build_routed_targets(
-        visit_index=visit_index,
-        label_table=labels,
-        config=RoutedTargetConfig.from_adapter(adapter),
-    )
-    assert report["routed_targets"] == 1
-    assert "history_amyloid_visible" not in routed.columns
-    assert routed.iloc[0]["routed_label"] == target_label
+    target = {
+        "subject_id": "private_subject_identifier",
+        "target_visit_id": "private_subject_identifier_v2",
+        "routed_label": target_label,
+        "age": 72,
+        "sex": "F",
+        "race": "synthetic",
+    }
+    if adapter.task.target_filter_column:
+        target[adapter.task.target_filter_column] = "T1"
 
     prefix = build_subject_prefix(
         visit_index=visit_index,
-        routed_target=routed.iloc[0].to_dict(),
+        routed_target=target,
         adapter=adapter,
     )
     model = RecordingReplayModelClient(_responses(adapter, target_label))

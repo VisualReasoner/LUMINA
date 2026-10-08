@@ -6,7 +6,7 @@ evidence schemas, or model clients.
 
 ## What an Adapter Defines
 
-- task name, label column, and allowed labels
+- task name and allowed labels
 - target eligibility and minimum visible history
 - modality names and image-path columns
 - modality roles and observation/comparison questions
@@ -25,9 +25,7 @@ context_columns: [age]
 
 task:
   name: example_task
-  label_column: example_label
   labels: [class_a, class_b]
-  target_policy: latest_eligible_visit
   minimum_prefix_visits: 2
   require_any_target_modality: [Modality_A]
   inspection_rules:
@@ -69,8 +67,9 @@ Adapters may require:
 - at least one modality in `require_any_target_modality`; and
 - prior same-modality studies through `required_prior_modalities`.
 
-The router evaluates these conditions after truncating the subject history at
-each candidate target.
+Users select one target per subject in the target table. The input loader
+truncates the history at that target and checks these conditions against the
+usable images. It does not select an alternative target automatically.
 
 ## Reference Comparators
 
@@ -96,5 +95,5 @@ information are rejected from the reference interface.
 - `configs/adapters/acrin6698_pcr.yaml`
 
 Run `pytest tests/test_all_adapters.py -q` after adding an adapter. The test
-exercises routing, the shared controller, structured states, and identifier
+exercises prepared input loading, the shared controller, structured states, and identifier
 exclusion with saved responses rather than a live model.

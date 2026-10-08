@@ -20,7 +20,6 @@ def test_benchmark_exports_predictions_traces_and_metrics(tmp_path: Path) -> Non
             "context_columns": [],
             "task": {
                 "name": "smoke_task",
-                "label_column": "label",
                 "labels": ["A", "B"],
                 "minimum_prefix_visits": 1,
                 "belief_rubric": ["Use visible evidence."],

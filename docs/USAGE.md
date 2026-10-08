@@ -32,61 +32,36 @@ Optional columns provide adapter-declared context, reference candidates, or a
 cached `prior_trajectory_state`. Labels are used only by evaluation and are not
 included in model-facing prompts.
 
-## Image Preparation
+## Preparing Inputs
 
-Create native-space center views from DICOM or NIfTI:
+Prepare image views, visit groups, target selection, and evaluation labels using
+your dataset's preprocessing and outcome definitions. LUMINA does not read raw
+DICOM or NIfTI files or construct clinical labels.
 
-```bash
-python scripts/preprocess_study.py \
-  --dicom-dir /path/to/dicom \
-  --mode native \
-  --stem subject_visit_modality \
-  --output-dir /path/to/processed-study
+A minimal visit index for the ADNI adapter is:
+
+```csv
+subject_id,visit_id,visit_date,mri_paths
+example_subject,V1,2020-01-01,/path/to/earlier_mri.png
+example_subject,V2,2021-01-01,/path/to/current_mri.png
 ```
 
-For T1-weighted MRI with MNI normalization:
+The corresponding target table selects the decision point explicitly:
 
-```bash
-python scripts/preprocess_study.py \
-  --nifti /path/to/t1.nii.gz \
-  --mode t1_mri_mni \
-  --mni-template /path/to/MNI152_T1_1mm.nii.gz \
-  --stem subject_visit_mri \
-  --output-dir /path/to/processed-study
+```csv
+subject_id,target_visit_id,routed_label
+example_subject,V2,CU_nonAD
 ```
 
-The MRI mode requires ANTs and FreeSurfer SynthStrip. DICOM conversion requires
-`dcm2niix`. Four-dimensional inputs require an explicit `--volume-index`.
+These rows illustrate the input format, not a clinical example. Use your own
+prepared images and independently assigned evaluation labels. The benchmark
+runner requires `routed_label`; `run_single_subject.py` does not require a label.
+Both read only the history through `target_visit_id`. The loader checks the
+adapter's minimum history and modality requirements against available files.
+For adapters with `target_filter`, provide the filter field (for example,
+`timepoint=T1`) in the visit index or target table.
 
-## Visit and Target Construction
-
-Build the visit index from a study catalog containing `subject_id`,
-`study_date`, `modality`, and `image_path`:
-
-```bash
-python scripts/build_visit_index.py \
-  --study-catalog-csv /path/to/study_catalog.csv \
-  --output-csv /path/to/visit_index.csv
-```
-
-ADNI label construction accepts diagnosis, CDR, and a Centiloid-derived binary
-amyloid-status table. Route one eligible target per subject with the selected
-adapter:
-
-```bash
-python scripts/build_labels.py \
-  --visit-index-csv /path/to/visit_index.csv \
-  --diagnosis-csv /path/to/diagnosis.csv \
-  --cdr-csv /path/to/cdr.csv \
-  --amyloid-csv /path/to/amyloid_status.csv \
-  --output-csv /path/to/visit_labels.csv
-
-python scripts/build_routed_targets.py \
-  --visit-index-csv /path/to/visit_index.csv \
-  --visit-labels-csv /path/to/visit_labels.csv \
-  --adapter-yaml configs/adapters/adni_ad_continuum.yaml \
-  --output-csv /path/to/routed_targets.csv
-```
+## Reference Comparators
 
 For reference-enabled adapters, the candidate table contains `modality`,
 `candidate_id`, `image_path`, and the adapter's matching fields. Reference

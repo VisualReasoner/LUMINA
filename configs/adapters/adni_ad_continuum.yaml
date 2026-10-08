@@ -8,7 +8,6 @@ context_aliases:
 
 task:
   name: ad_continuum
-  label_column: ad_continuum_3way
   labels: [CU_nonAD, Preclinical_AD, Symptomatic_AD]
   label_aliases:
     cu: CU_nonAD
@@ -16,7 +15,6 @@ task:
     cognitively_unimpaired: CU_nonAD
     preclinical_ad: Preclinical_AD
     symptomatic_ad: Symptomatic_AD
-  target_policy: latest_eligible_visit
   minimum_prefix_visits: 2
   require_any_target_modality: [MRI, Amyloid_PET, Tau_PET]
   inspection_rules:

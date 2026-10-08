@@ -1,7 +1,9 @@
 # Reproducibility
 
 This repository implements the LUMINA method described in the paper. It does
-not reimplement the comparison baselines.
+not reimplement the comparison baselines. Image preprocessing, visit grouping,
+cohort selection, and label construction are outside the public package; users
+supply prepared image views, visit indices, and target tables.
 
 ## Paper-to-Code Map
 
@@ -64,7 +66,7 @@ pytest -q
 
 It covers all included adapters, routed-target eligibility, reference matching,
 identifier exclusion, staged controller order, cached trajectory execution,
-cross-subject leakage checks, SMC selection, preprocessing, output schemas, and
+cross-subject leakage checks, SMC selection, output schemas, and
 the data-free replay path.
 
 Paper datasets, derived restricted tables, model weights, and benchmark outputs

@@ -3,12 +3,10 @@ context_columns: [age]
 
 task:
   name: breast_treatment_response
-  label_column: pcr_binary
   labels: [non_pCR, pCR]
   label_aliases:
     non_pcr: non_pCR
     pcr: pCR
-  target_policy: latest_eligible_visit
   target_filter:
     column: timepoint
     values: [T1]

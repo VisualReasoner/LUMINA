@@ -51,9 +51,9 @@ pip install -e ".[local]"  # local Hugging Face MLLMs
 pip install -e ".[api]"    # OpenAI-compatible APIs
 ```
 
-Raw-image preparation additionally requires `dcm2niix`; T1 MRI normalization
-requires ANTs and FreeSurfer SynthStrip. These system tools are not installed by
-`pip` or the Conda environment.
+LUMINA accepts prepared image views and input tables. Image preprocessing,
+visit grouping, cohort selection, and label construction are performed outside
+this repository.
 
 ## How to Run
 
@@ -118,7 +118,8 @@ set, or prediction target.
 ```text
 configs/adapters/      task and dataset adapters
 configs/ablations/     component-level ablation overlays
-scripts/               preprocessing, indexing, inference, and evaluation entry points
+scripts/               inference, evaluation, replay, and memory/reference utilities
+src/lumina/data/       prepared input loading and reference metadata
 src/lumina/agent/      evidence controller and longitudinal runtime
 src/lumina/memory/     trajectory and cross-subject memory
 src/lumina/prompts/    staged prompt construction
