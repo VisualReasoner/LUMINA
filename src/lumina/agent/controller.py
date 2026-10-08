@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 import json
+from math import isfinite
 from pathlib import Path
 import re
 from statistics import mean
@@ -190,6 +191,47 @@ class EvidenceController:
             )
             if missing:
                 raise ValueError(f"modality_observations is missing selected modalities: {missing}")
+            normalized_observations = {}
+            expected_names = {normalize(name): name for name in expected_modalities}
+            for name, observation in actual_raw.items():
+                canonical = expected_names.get(normalize(name))
+                if canonical is None or canonical in normalized_observations:
+                    raise ValueError(f"unexpected or duplicate observation modality: {name!r}")
+                if not isinstance(observation, dict):
+                    raise ValueError(f"observation for {name!r} must be an object")
+                if not isinstance(observation.get("present"), bool):
+                    raise ValueError(f"observation for {name!r} requires boolean present")
+                findings = observation.get("findings")
+                if not isinstance(findings, list) or any(not isinstance(item, str) for item in findings):
+                    raise ValueError(f"observation for {name!r} requires a list of string findings")
+                severity = observation.get("severity")
+                if severity is not None and (type(severity) is not int or not 0 <= severity <= 3):
+                    raise ValueError(f"observation for {name!r} severity must be null or an integer from 0 to 3")
+                if "confidence" in observation:
+                    confidence = observation["confidence"]
+                    if (
+                        type(confidence) not in (int, float)
+                        or not isfinite(confidence)
+                        or not 0 <= confidence <= 1
+                    ):
+                        raise ValueError(f"observation for {name!r} confidence must be a finite number from 0 to 1")
+                for field in ("summary", "uncertainty"):
+                    if field in observation and not isinstance(observation[field], str):
+                        raise ValueError(f"observation for {name!r} {field} must be a string")
+                normalized_observations[canonical] = observation
+            if "multimodal_consistency" in payload and payload["multimodal_consistency"] not in (
+                "convergent", "complementary", "conflicting", "unknown"
+            ):
+                raise ValueError("multimodal_consistency must be convergent, complementary, conflicting, or unknown")
+            if "summary" in payload and not isinstance(payload["summary"], str):
+                raise ValueError("observation summary must be a string")
+            if "uncertainties" in payload and (
+                not isinstance(payload["uncertainties"], list)
+                or any(not isinstance(item, str) for item in payload["uncertainties"])
+            ):
+                raise ValueError("observation uncertainties must be a list of strings")
+            payload = dict(payload)
+            payload["modality_observations"] = normalized_observations
         if stage in {"final_belief", "repair_belief"}:
             leading = self.adapter.task.normalize_label(payload["leading_label"])
             second = self.adapter.task.normalize_label(payload["second_best_label"])
@@ -264,7 +306,9 @@ class EvidenceController:
         return f"V{len(history) + 1}"
 
     @staticmethod
-    def _model_visit_memory(memory: Mapping[str, LocalComparison]) -> dict[str, dict[str, object]]:
+    def _model_visit_memory(
+        memory: Mapping[str, LocalComparison | Mapping[str, object]],
+    ) -> dict[str, dict[str, object]]:
         payload: dict[str, dict[str, object]] = {}
         for modality, comparison in memory.items():
             values = dict(to_dict(comparison))
@@ -293,6 +337,7 @@ class EvidenceController:
             values = dict(to_dict(event))
             for key in ("event_id", "subject_id", "visit_id"):
                 values.pop(key, None)
+            values["modality_changes"] = EvidenceController._model_visit_memory(event.modality_changes)
             active_events.append(values)
         return {"summary": trajectory.summary, "active_events": active_events}
 

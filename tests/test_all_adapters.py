@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from pathlib import Path
+from copy import deepcopy
+import json
 
 import pandas as pd
 from PIL import Image
@@ -12,6 +14,7 @@ from lumina.data.io import build_subject_prefix
 from lumina.data.targets import RoutedTargetConfig, build_routed_targets
 from lumina.models import ReplayModelClient
 from lumina.memory.cross_subject import CrossSubjectBank, CrossSubjectEntry
+from lumina.schemas.states import ImageRef, VisitInput
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -21,6 +24,45 @@ ADAPTERS = (
     ("ppmi_parkinsonian_state.yaml", "PD"),
     ("acrin6698_pcr.yaml", "pCR"),
 )
+
+
+def test_three_visit_prompts_preserve_memory_without_source_ids(tmp_path):
+    adapter = load_adapter(ROOT / "configs/adapters/adni_ad_continuum.yaml")
+    responses = _responses(adapter, "Preclinical_AD")
+    for stage, items in responses.items():
+        if stage == "compare_anchor":
+            items.extend(deepcopy(items))
+        else:
+            items.append(deepcopy(items[-1]))
+    model = RecordingReplayModelClient(responses)
+    image = tmp_path / "image.png"
+    Image.new("RGB", (8, 8)).save(image)
+    visits = [
+        VisitInput(
+            subject_id="private_subject_identifier",
+            visit_id=f"private_subject_identifier_v{index}",
+            visit_date=f"202{index}-01-01",
+            modalities={m.name: [ImageRef(str(image), "image", m.name)] for m in adapter.modalities},
+        )
+        for index in range(3)
+    ]
+    runtime = LUMINARuntime(EvidenceController(adapter=adapter, model=model))
+    result = runtime.run_subject(visits)
+    assert len(result.visits[-1].trajectory_before.active_event_ids) == 2
+    assert all("private_subject_identifier" not in prompt for prompt in model.requests)
+    facts = [
+        json.loads(line.split(": ", 1)[1])
+        for prompt in model.requests for line in prompt.splitlines()
+        if line.startswith("Controller-authoritative current-state facts: ")
+    ]
+    assert [item["active_trajectory_event_count"] for item in facts] == [0, 1, 2]
+    event = result.visits[-1].trajectory_before.events[-1]
+    assert event.modality_changes["MRI"]["anchor_visit_id"] == "private_subject_identifier_v0"
+    safe = runtime.controller._model_trajectory(result.visits[-1].trajectory_before)
+    comparison = safe["active_events"][-1]["modality_changes"]["MRI"]
+    assert comparison["direction"] == "moderate_increase"
+    assert comparison["gap_days"] > 0
+    assert "anchor_visit_id" not in comparison
 
 
 class RecordingReplayModelClient(ReplayModelClient):

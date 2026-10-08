@@ -50,7 +50,11 @@ def _controller_facts(
                     "comparison_quality",
                 )
             }
-    active_ids = trajectory_state.get("active_event_ids", []) if isinstance(trajectory_state, Mapping) else []
+    active_events = (
+        trajectory_state.get("active_events", trajectory_state.get("active_event_ids", []))
+        if isinstance(trajectory_state, Mapping)
+        else []
+    )
     return {
         "current_same_modality_comparisons": comparisons,
         "available_same_modality_anchors": sorted(
@@ -59,7 +63,7 @@ def _controller_facts(
         "missing_same_modality_anchors": sorted(
             modality for modality, value in comparisons.items() if value.get("anchor_available") is not True
         ),
-        "active_trajectory_event_count": len(active_ids) if isinstance(active_ids, list) else 0,
+        "active_trajectory_event_count": len(active_events) if isinstance(active_events, list) else 0,
         "cross_subject_neighbor_count": len(cross_subject_context),
     }
 

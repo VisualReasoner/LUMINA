@@ -120,6 +120,24 @@ def build_subject_prefix(
         raise ValueError(
             f"Target requires at least {adapter.task.minimum_prefix_visits} visible visits; found {len(visits)}."
         )
+    task = adapter.task
+    current_modalities = set(visits[-1].modalities)
+    missing_target = sorted(set(task.required_target_modalities) - current_modalities)
+    if missing_target:
+        raise ValueError(f"Target is missing required usable modalities: {missing_target}")
+    if task.require_any_target_modality and not current_modalities.intersection(task.require_any_target_modality):
+        raise ValueError(f"Target requires a usable modality from: {list(task.require_any_target_modality)}")
+    prior_modalities = {modality for visit in visits[:-1] for modality in visit.modalities}
+    missing_prior = sorted(set(task.required_prior_modalities) - prior_modalities)
+    if missing_prior:
+        raise ValueError(f"Visible history is missing required usable prior modalities: {missing_prior}")
+    if task.target_filter_column:
+        field = task.target_filter_column
+        values = [subject.iloc[-1].get(field), routed_target.get(field)]
+        values = [str(value).strip().lower() for value in values if pd.notna(value) and str(value).strip()]
+        allowed = {value.strip().lower() for value in task.target_filter_values}
+        if not values or any(value not in allowed for value in values):
+            raise ValueError(f"Target {field!r} must match one of {list(task.target_filter_values)}")
     return visits
 
 
